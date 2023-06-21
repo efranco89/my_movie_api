@@ -1,0 +1,9 @@
+services:
+  my_movie_api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/my_movie_api
+    ports:
+      - '80:80'
