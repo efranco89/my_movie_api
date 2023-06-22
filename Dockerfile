@@ -1,4 +1,4 @@
-FROM python:3.10
+FROM python:3.11.4
 
 WORKDIR /my_movie_api
 COPY requirements.txt /my_movie_api/requirements.txt

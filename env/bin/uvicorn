@@ -1,4 +1,4 @@
-#!/Users/enriquefranco/Documents/cursos_platzi/01_curso_python/03_curso_fastapi/my_movie_api/env/bin/python3
+#!/Users/enriquefranco/Documents/cursos_platzi/01_curso_python/03_curso_fastapi/my_movie_api/env/bin/python
 # -*- coding: utf-8 -*-
 import re
 import sys
