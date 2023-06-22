@@ -6,6 +6,7 @@ from typing import Optional, List
 from starlette.requests import Request
 from jwt_manager import create_token, validate_token
 from fastapi.security import HTTPBearer
+from fastapi.encoders import jsonable_encoder
 
 from config.database import Session, engine, Base
 from models.movie import Movie as MovieModel
@@ -29,7 +30,7 @@ class User(BaseModel):
 
 class Movie(BaseModel):
   id: Optional[int] = None
-  title: str = Field(min_length=5,max_length=15)
+  title: str = Field(min_length=5,max_length=255)
   overview: str = Field(min_length=15,max_length=255)
   year: int  = Field(le=2022)
   rating: float = Field(ge=0.0, le=10.0)
@@ -78,22 +79,27 @@ def login(user: User):
 
 @app.get("/movies", tags=['movies'], response_model=List[Movie], status_code=200, dependencies=[Depends(JWTBearer())])
 def get_movies() -> List[Movie]:
-  return JSONResponse(status_code=200, content= movies)
+  db = Session()
+  movies_from_db = db.query(MovieModel).all()
+  return JSONResponse(status_code=200, content= jsonable_encoder(movies_from_db))
 
 @app.get('/movies/{id}', tags=['movies'], response_model=Movie, status_code=200)
 def get_movie(id: int = Path(ge=1, le=2000)) -> Movie:
-  for movie in movies:
-    if movie["id"] == id:
-      return JSONResponse(status_code= 200, content=movie)
-  return JSONResponse(status_code=404, content=[])
+  db = Session()
+  movie = db.query(MovieModel).filter_by(id = id).first()
+  if movie: 
+    return JSONResponse(status_code= 200, content=jsonable_encoder(movie))
+  else:
+    return JSONResponse(status_code=404, content={'message': 'Not Found'})
     
 @app.get("/movies/", tags=['movies'], response_model=List[Movie], status_code=200)
 def get_movies_by_category(category: str = Query(min_length=5, max_length=15))-> List[Movie]:
-  movie = list(filter(lambda movie : movie['category']== category, movies))
-  if len(movie):
-    return JSONResponse(status_code=200, content=movie)
+  db = Session()
+  movie = db.query(MovieModel).filter_by(category = category).all()
+  if movie: 
+    return JSONResponse(status_code= 200, content=jsonable_encoder(movie))
   else:
-    return JSONResponse(status_code=404, content=movie)
+    return JSONResponse(status_code=404, content={'message': 'Not Found'})
 
 @app.post('/movies', tags=['movies'], response_model=dict, status_code=201)
 def create_movies(movie: Movie) -> dict:
@@ -105,20 +111,31 @@ def create_movies(movie: Movie) -> dict:
 
 @app.put('/movies/{id}', tags=['movies'], response_model=dict, status_code=200)
 def update_movie(id: int, movie: Movie) -> dict:
-  for item in movies: 
-    if item["id"] == id: 
-      item['title'] = movie.title
-      item['overview'] = movie.overview
-      item['year'] = movie.year
-      item['rating'] = movie.rating
-      item['category'] = movie.category
-  return JSONResponse(status_code=200,content={"message": "The movie has been updated"})
+  db = Session()
+  item = db.query(MovieModel).filter_by(id = id).first()
+  if movie:
+    item.title = movie.title
+    item.overview = movie.overview
+    item.year = movie.year
+    item.rating = movie.rating
+    item.category = movie.category
+    db.commit()
+    return JSONResponse(status_code=200,content={"message": "The movie has been updated"})
+  else:
+    return JSONResponse(status_code=404, content={'message': 'Not Found'})
 
 @app.delete('/movies/{id}', tags=['movies'], response_model=dict, status_code=200)
 def delete_movie(id: int) -> dict:
-  for movie in movies: 
-    if movie["id"] == id:
-      movies.remove(movie)
-      return JSONResponse(status_code=200, content={"message": "The movie has been deleted"})
-  return JSONResponse(status_code=404, content={})
+  
+  db = Session()
+  item = db.query(MovieModel).filter_by(id = id).first()
+  if item: 
+    db.delete(item)
+    db.commit()
+    return JSONResponse(status_code=200, content={"message": "The movie has been deleted"})
+  else:
+    return JSONResponse(status_code=404, content={'message': 'Not Found'})
+  
+
+  
   
